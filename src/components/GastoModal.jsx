@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { Plus, X } from 'lucide-react';
 import { Modal, Icono, Segmentado } from './ui.jsx';
 import { useStore } from '../lib/store.jsx';
-import { SUGERENCIAS, COLOR_TIPO } from '../lib/catalogo.js';
+import { SUGERENCIAS, COLOR_TIPO, ICONOS_RUBRO } from '../lib/catalogo.js';
 import { tiposActivos } from '../lib/calc.js';
-import { hoyISO, fmt, convertir, fmtTc } from '../lib/money.js';
+import { hoyISO, fmt, convertir, fmtTc, uid } from '../lib/money.js';
 
 const vacio = (obra, ajustes, ultimo) => ({
   fecha: ultimo?.fecha || hoyISO(),
@@ -30,7 +31,7 @@ function parseMonto(txt) {
 const mostrarMonto = (n) => (n === '' || n == null ? '' : new Intl.NumberFormat('es-AR', { maximumFractionDigits: 2 }).format(n));
 
 export function GastoModal({ abierto, obra, gasto, onCerrar }) {
-  const { ajustes, agregarGasto, editarGasto, avisar } = useStore();
+  const { ajustes, agregarGasto, editarGasto, editarObra, avisar } = useStore();
   const editando = Boolean(gasto);
   const ultimo = useRef(null);
   const [f, setF] = useState(() => vacio(obra, ajustes));
@@ -38,6 +39,25 @@ export function GastoModal({ abierto, obra, gasto, onCerrar }) {
   const [error, setError] = useState('');
   const [mas, setMas] = useState(false);
   const montoRef = useRef(null);
+  const [nuevoRubro, setNuevoRubro] = useState({ abierto: false });
+
+  // Crea un rubro nuevo en la obra y lo deja elegido para este gasto
+  function crearRubro() {
+    const nombre = (nuevoRubro.nombre || '').trim();
+    if (!nombre) return setError('Escribí el nombre del rubro nuevo.');
+    const existe = obra.rubros.find((r) => r.nombre.toLowerCase() === nombre.toLowerCase());
+    if (existe) {
+      set('rubroId')(existe.id);
+    } else {
+      const id = 'r' + uid();
+      editarObra(obra.id, { rubros: [...obra.rubros, { id, nombre, icono: nuevoRubro.icono || 'Hammer' }] });
+      set('rubroId')(id);
+      avisar(`Rubro "${nombre}" agregado`);
+    }
+    setError('');
+    setNuevoRubro({ abierto: false });
+    setTimeout(() => document.getElementById('g-concepto')?.focus(), 20);
+  }
 
   useEffect(() => {
     if (!abierto) return;
@@ -51,7 +71,8 @@ export function GastoModal({ abierto, obra, gasto, onCerrar }) {
       setMas(false);
     }
     setError('');
-  }, [abierto, gasto, obra, ajustes]);
+    setNuevoRubro({ abierto: false });
+  }, [abierto, gasto, ajustes]);
 
   const set = (k) => (e) => setF((x) => ({ ...x, [k]: e?.target ? e.target.value : e }));
   const tipos = tiposActivos(obra);
@@ -105,7 +126,34 @@ export function GastoModal({ abierto, obra, gasto, onCerrar }) {
                 <span>{r.nombre}</span>
               </button>
             ))}
+            {!nuevoRubro.abierto && (
+              <button type="button" className="rubro-agregar" onClick={() => setNuevoRubro({ abierto: true, nombre: '', icono: 'Hammer' })}>
+                <span className="rubro-agregar__mas"><Plus size={16} strokeWidth={2.4} /></span>
+                <span>Nuevo rubro</span>
+              </button>
+            )}
           </div>
+          {nuevoRubro.abierto && (
+            <div className="rubro-crear">
+              <div className="rubro-crear__fila">
+                <span className="rubro-crear__ico"><Icono nombre={nuevoRubro.icono} size={20} /></span>
+                <input autoFocus value={nuevoRubro.nombre} placeholder="Nombre del rubro (ej: Instalación eléctrica)" aria-label="Nombre del nuevo rubro"
+                  onChange={(e) => setNuevoRubro((x) => ({ ...x, nombre: e.target.value }))}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') { e.preventDefault(); crearRubro(); }
+                    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); setNuevoRubro({ abierto: false }); }
+                  }} />
+                <button type="button" className="btn btn--pri btn--chico" onClick={crearRubro}>Agregar</button>
+                <button type="button" className="btn-icono" onClick={() => setNuevoRubro({ abierto: false })} aria-label="Cancelar"><X size={18} /></button>
+              </div>
+              <div className="rubro-crear__iconos" role="radiogroup" aria-label="Ícono del rubro">
+                {ICONOS_RUBRO.map((i) => (
+                  <button type="button" key={i} role="radio" aria-checked={nuevoRubro.icono === i} className={nuevoRubro.icono === i ? 'on' : ''}
+                    onClick={() => setNuevoRubro((x) => ({ ...x, icono: i }))}><Icono nombre={i} size={17} /></button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="campo">
