@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Building2, Menu, X, RefreshCw, Database, Plus } from 'lucide-react';
+import { Building2, Menu, X, RefreshCw, Database, Plus, LogOut, Cloud, CloudUpload } from 'lucide-react';
+import { useSesion } from './lib/sesion.jsx';
+import { Cargando } from './pages/Acceso.jsx';
 import { useStore } from './lib/store.jsx';
 import { Marca } from './components/Marca.jsx';
 import { Segmentado, Toasts } from './components/ui.jsx';
@@ -66,7 +68,8 @@ function Cotizacion() {
 
 export default function App() {
   const store = useStore();
-  const { obras, ajustes, setMoneda } = store;
+  const { obras, ajustes, setMoneda, estado, guardando, recargar } = store;
+  const { usuario, salir } = useSesion();
   const [ruta, setRuta] = useState(leerRuta);
   const [menu, setMenu] = useState(false);
   const [datosAbierto, setDatosAbierto] = useState(false);
@@ -79,7 +82,7 @@ export default function App() {
   }, []);
 
   const obra = ruta.vista === 'obra' ? obras.find((o) => o.id === ruta.id) : null;
-  useEffect(() => { if (ruta.vista === 'obra' && !obra) ir('/'); }, [ruta, obra]);
+  useEffect(() => { if (estado === 'listo' && ruta.vista === 'obra' && !obra) ir('/'); }, [estado, ruta, obra]);
   useEffect(() => { document.title = obra ? `${obra.nombre} · Plomada` : 'Plomada · Costos de obra'; }, [obra]);
 
   return (
@@ -105,6 +108,11 @@ export default function App() {
         <div className="lateral__pie">
           <Cotizacion />
           <button className="lateral__datos" onClick={() => setDatosAbierto(true)}><Database size={15} /> Copia de seguridad y datos</button>
+          <div className="cuenta">
+            <span className="cuenta__avatar" aria-hidden="true">{usuario.usuario.slice(0, 1).toUpperCase()}</span>
+            <span className="cuenta__txt"><b className="trunc">{usuario.usuario}</b><small className="trunc">{usuario.email}</small></span>
+            <button className="cuenta__salir" onClick={salir} title="Cerrar sesión" aria-label="Cerrar sesión"><LogOut size={17} /></button>
+          </div>
         </div>
       </aside>
       <div className="lateral__velo" onClick={() => setMenu(false)} />
@@ -117,15 +125,21 @@ export default function App() {
             {obra ? <><a href="#/">Obras</a><span>/</span><b>{obra.nombre}</b></> : <b>Panel de obras</b>}
           </div>
           <div className="barra-sup__der">
+            <span className={`guardado ${guardando ? 'guardado--activo' : ''}`} title="Tus datos se guardan en la nube">
+              {guardando ? <><CloudUpload size={16} /> Guardando…</> : <><Cloud size={16} /> Guardado</>}
+            </span>
             <span className="barra-sup__lbl">Ver en</span>
             <Segmentado chico etiqueta="Moneda" valor={ajustes.moneda} onChange={setMoneda}
               opciones={[{ valor: 'ARS', label: '$ Pesos' }, { valor: 'USD', label: 'US$ Dólares' }]} />
           </div>
         </header>
 
-        {obra
-          ? <ObraDetalle key={obra.id} obra={obra} tab={ruta.tab} />
-          : <Obras onNueva={() => setNuevaObra(true)} />}
+        {estado === 'cargando' ? <Cargando texto="Trayendo tus obras…" />
+          : estado === 'error' ? (
+            <div className="pagina"><div className="vacio"><h3>No pudimos conectarnos con la base de datos</h3><p>Revisá tu conexión a internet y probá de nuevo.</p><button className="btn btn--pri" onClick={recargar}><RefreshCw size={16} /> Reintentar</button></div></div>
+          ) : obra
+            ? <ObraDetalle key={obra.id} obra={obra} tab={ruta.tab} />
+            : <Obras onNueva={() => setNuevaObra(true)} />}
       </main>
 
       <ObraModal abierto={nuevaObra} onCerrar={() => setNuevaObra(false)} onCreada={(id) => { setNuevaObra(false); ir(`/obra/${id}`); }} />

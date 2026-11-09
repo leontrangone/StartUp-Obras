@@ -27,7 +27,7 @@ export function DatosModal({ abierto, onCerrar }) {
       const d = JSON.parse(await f.text());
       if (!Array.isArray(d.obras) || !Array.isArray(d.gastos)) throw new Error();
       if (!confirm(`Esto reemplaza los datos actuales por los de la copia (${d.obras.length} obras, ${d.gastos.length} gastos). ¿Seguir?`)) return;
-      reemplazarTodo({ obras: d.obras, gastos: d.gastos, ajustes: d.ajustes, ejemplo: false });
+      await reemplazarTodo({ obras: d.obras, gastos: d.gastos });
       avisar('Copia restaurada');
       onCerrar();
     } catch {
@@ -36,7 +36,7 @@ export function DatosModal({ abierto, onCerrar }) {
   }
 
   return (
-    <Modal abierto={abierto} onCerrar={onCerrar} titulo="Copia de seguridad y datos" subtitulo="Los datos se guardan en este navegador. Hacé una copia de vez en cuando." ancho={560}>
+    <Modal abierto={abierto} onCerrar={onCerrar} titulo="Copia de seguridad y datos" subtitulo="Tus datos están guardados en la nube. Igual podés bajarte una copia cuando quieras." ancho={560}>
       <div className="datos">
         <div className="datos__fila">
           <div><b>Descargar copia</b><p>Un archivo con todas las obras y gastos ({obras.length} obras · {gastos.length} gastos).</p></div>
@@ -50,12 +50,12 @@ export function DatosModal({ abierto, onCerrar }) {
         {ejemplo ? (
           <div className="datos__fila datos__fila--aviso">
             <div><b>Empezar de cero</b><p>Borra las obras de ejemplo para cargar las tuyas.</p></div>
-            <button className="btn btn--peligro" onClick={() => { if (confirm('¿Borrar los datos de ejemplo?')) { borrarEjemplo(); avisar('Listo, a cargar tus obras'); onCerrar(); window.location.hash = '/'; } }}><Trash2 size={16} /> Borrar ejemplo</button>
+            <button className="btn btn--peligro" onClick={() => { if (confirm('¿Borrar los datos de ejemplo?')) { borrarEjemplo().catch(() => {}); avisar('Listo, a cargar tus obras'); onCerrar(); window.location.hash = '/'; } }}><Trash2 size={16} /> Borrar ejemplo</button>
           </div>
         ) : (
           <div className="datos__fila">
             <div><b>Ver datos de ejemplo</b><p>Reemplaza todo por las obras de demostración.</p></div>
-            <button className="btn btn--sec" onClick={() => { if (confirm('Esto reemplaza tus datos por los de ejemplo. Hacé una copia antes. ¿Seguir?')) { restaurarEjemplo(); onCerrar(); window.location.hash = '/'; } }}><RotateCcw size={16} /> Cargar ejemplo</button>
+            <button className="btn btn--sec" onClick={() => { if (confirm('Esto reemplaza tus datos por los de ejemplo. Hacé una copia antes. ¿Seguir?')) { restaurarEjemplo().catch(() => {}); onCerrar(); window.location.hash = '/'; } }}><RotateCcw size={16} /> Cargar ejemplo</button>
           </div>
         )}
       </div>

@@ -27,7 +27,7 @@ export function ImportarModal({ abierto, obra, onCerrar }) {
 
   function confirmar() {
     if (res.nuevos.length) editarObra(obra.id, { rubros: [...obra.rubros, ...res.nuevos] });
-    agregarGastos(res.gastos);
+    agregarGastos(res.gastos).catch(() => {});
     avisar(`Se importaron ${res.gastos.length} gastos`);
     onCerrar();
   }

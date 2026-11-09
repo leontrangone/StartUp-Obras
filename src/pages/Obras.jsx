@@ -1,6 +1,7 @@
-import { useMemo } from 'react';
-import { Plus, MapPin, Layers, ArrowUpRight, Info } from 'lucide-react';
-import { useStore } from '../lib/store.jsx';
+import { useMemo, useState } from 'react';
+import { Plus, MapPin, Layers, ArrowUpRight, Info, CloudUpload, Sparkles } from 'lucide-react';
+import { useStore, leerDatosLocales, olvidarDatosLocales } from '../lib/store.jsx';
+import { useSesion } from '../lib/sesion.jsx';
 import { Fachada } from '../components/Fachada.jsx';
 import { Barra } from '../components/ui.jsx';
 import { resumenObra } from '../lib/calc.js';
@@ -53,7 +54,9 @@ function TarjetaObra({ obra, res, ultimo, moneda }) {
 }
 
 export function Obras({ onNueva }) {
-  const { obras, gastos, ajustes, ejemplo, borrarEjemplo, avisar } = useStore();
+  const { obras, gastos, ajustes, ejemplo, borrarEjemplo, restaurarEjemplo, cargarTodo, avisar } = useStore();
+  const { usuario } = useSesion();
+  const [locales, setLocales] = useState(leerDatosLocales);
   const moneda = ajustes.moneda;
 
   const datos = useMemo(() => obras.map((o) => {
@@ -67,13 +70,56 @@ export function Obras({ onNueva }) {
   const delMes = gastos.filter((g) => mesDe(g.fecha) === mes && obras.some((o) => o.id === g.obraId)).reduce((s, g) => s + montoEn(g, moneda), 0);
   const enObra = obras.filter((o) => o.estado === 'En obra').length;
 
+  async function subirLocales() {
+    try {
+      await cargarTodo({ obras: locales.obras, gastos: locales.gastos, modo: 'agregar' });
+      olvidarDatosLocales();
+      setLocales(null);
+      avisar(`Se subieron ${locales.obras.length} obras a tu cuenta`);
+    } catch { /* el error ya se avisó */ }
+  }
+
+  const avisoLocal = locales && (
+    <div className="aviso-ejemplo aviso-local">
+      <CloudUpload size={18} />
+      <p><b>Encontramos {locales.obras.length} {locales.obras.length === 1 ? 'obra guardada' : 'obras guardadas'} en este navegador</b> ({locales.gastos.length} gastos), de antes de tener cuenta. ¿Las subimos a tu cuenta?</p>
+      <div className="fila-btns">
+        <button className="btn btn--sec btn--chico" onClick={() => { if (confirm('¿Descartar esos datos del navegador? No se pueden recuperar.')) { olvidarDatosLocales(); setLocales(null); } }}>Descartar</button>
+        <button className="btn btn--pri btn--chico" onClick={subirLocales}>Subir a mi cuenta</button>
+      </div>
+    </div>
+  );
+
+  if (!obras.length) {
+    return (
+      <div className="pagina">
+        {avisoLocal}
+        <section className="bienvenida">
+          <div className="bienvenida__ilus" aria-hidden="true">
+            <Fachada pisos={9} estado="Planificación" alto={210} paleta={0} id="bienv" />
+          </div>
+          <div className="bienvenida__txt">
+            <p className="sobretitulo">Hola, {usuario.usuario}</p>
+            <h1>Arranquemos con tu primera obra</h1>
+            <p>Cargás el edificio una vez y después cada gasto en segundos. Los gráficos, la tabla A + B y los informes se arman solos.</p>
+            <div className="fila-btns fila-btns--izq">
+              <button className="btn btn--pri" onClick={onNueva}><Plus size={18} /> Crear mi primera obra</button>
+              <button className="btn btn--sec" onClick={() => restaurarEjemplo().catch(() => {})}><Sparkles size={16} /> Probar con obras de ejemplo</button>
+            </div>
+          </div>
+        </section>
+      </div>
+    );
+  }
+
   return (
     <div className="pagina">
+      {avisoLocal}
       {ejemplo && (
         <div className="aviso-ejemplo">
           <Info size={18} />
           <p><b>Estás viendo obras de ejemplo.</b> Recorré la app con estos datos y, cuando quieras, empezá con las tuyas.</p>
-          <button className="btn btn--sec btn--chico" onClick={() => { if (confirm('¿Borrar las obras de ejemplo y empezar de cero?')) { borrarEjemplo(); avisar('Listo, a cargar tus obras'); } }}>Empezar de cero</button>
+          <button className="btn btn--sec btn--chico" onClick={() => { if (confirm('¿Borrar las obras de ejemplo y empezar de cero?')) { borrarEjemplo().then(() => avisar('Listo, a cargar tus obras')).catch(() => {}); } }}>Empezar de cero</button>
         </div>
       )}
 

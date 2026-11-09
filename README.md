@@ -1,61 +1,68 @@
 # Plomada · Costos de obra, a plomo
 
-App para registrar y analizar los gastos de una o varias obras de construcción.
-Reemplaza la planilla de Excel: cada gasto se carga en segundos y los gráficos,
-porcentajes y la tabla **Representación de costos A + B** se arman solos.
+App web para registrar y analizar los gastos de una o varias obras de construcción.
+Cada usuario tiene su cuenta (usuario o email + contraseña) y sus obras quedan
+guardadas en una base de datos **PostgreSQL en Neon**. Se publica en **Vercel**.
 
-## Cómo abrirla
+## Cómo publicarla (Vercel + Neon)
 
-**Sin instalar nada:** abrí **`Plomada.html`** con doble clic (Chrome, Edge o Firefox).
+1. **Subí el código a GitHub**
+   ```bash
+   git add .
+   git commit -m "Plomada con cuentas y base de datos"
+   git push
+   ```
+2. **Creá el proyecto en Vercel:** en [vercel.com](https://vercel.com) elegí *Add New → Project*, importá el repo y dejá todo como viene (Vercel detecta Vite). Todavía no hace falta hacer el deploy.
+3. **Conectá Neon:** en el proyecto de Vercel, andá a *Storage → Create Database → Neon* y conectalo al proyecto. Vercel crea sola la variable `DATABASE_URL`.
+   - Si ya tenés una base en Neon: copiá la *Connection string* desde el panel de Neon y cargala a mano como `DATABASE_URL` en *Settings → Environment Variables*.
+4. **Agregá `JWT_SECRET`:** en *Settings → Environment Variables* creá `JWT_SECRET` con una frase larga y al azar (es la llave que firma las sesiones).
+5. **Deploy:** *Deployments → Redeploy*. Listo: abrí el link, creá tu cuenta y empezá.
 
-> Ojo: el `index.html` de la raíz es el archivo de desarrollo y solo funciona con `npm run dev`.
+Las tablas se crean solas la primera vez que alguien usa la app (el esquema está en `db/schema.sql`).
+De ahí en más, cada `git push` publica la versión nueva automáticamente.
 
-**Para desarrollar:**
+## Cómo correrla en tu compu
 
 ```bash
 npm install
-npm run dev      # abre la app en http://localhost:5173
-npm run build    # regenera Plomada.html (un solo archivo, también en dist/)
+cp .env.example .env.local     # y completá DATABASE_URL y JWT_SECRET
+npm run dev                    # app en http://localhost:5173 (API en :3001)
 ```
+
+Para desarrollo podés usar la misma base de Neon, o mejor una *branch* de Neon aparte para no mezclar datos de prueba.
 
 ## Qué tiene
 
-- **Panel de obras:** cada edificio con su fachada dibujada (los pisos se "construyen" según el avance del presupuesto), total invertido, % de presupuesto y reparto A/B.
-- **Por obra:**
-  - **Resumen:** costo total, presupuesto usado, gasto del mes contra el anterior, costo por m², gráfico mensual, distribución A/B, ranking de rubros y últimos gastos.
-  - **Gastos:** historial agrupado por mes, con buscador y filtros (mes, rubro, tipo de costo). Editar, borrar y deshacer.
-  - **Análisis:** tabla A + B automática, comparación A/B por rubro, gasto acumulado contra el presupuesto y mapa de calor mes × rubro.
-  - **Ajustes:** datos de la obra, nombres de los tipos de costo (A, B y C opcional) y rubros propios con ícono.
-- **Pesos o dólares:** cada gasto guarda la cotización del día en que se cargó, así la conversión es justa aunque cambie el dólar. La cotización de referencia se trae online (Oficial, Blue o MEP, vía dolarapi.com) o se escribe a mano.
-- **Exportar Excel:** 3 hojas (Resumen A+B con fórmulas, Gastos con filtros y subtotal, Evolución mes × rubro).
-- **Exportar PDF:** informe para reuniones con indicadores, todos los gráficos y las tablas.
-- **Importar Excel:** carga masiva desde una planilla (hay plantilla descargable).
-- **Copia de seguridad:** descargar y restaurar todos los datos en un archivo `.json`.
-- Atajo: tecla **N** para cargar un gasto.
+- **Cuentas:** registro con usuario + email + contraseña; ingreso con usuario **o** email. Contraseñas encriptadas con bcrypt, sesión en cookie segura (httpOnly) que dura 30 días. Cada usuario ve solo sus obras.
+- **Panel de obras** con fachada dibujada, total invertido, % de presupuesto y reparto A/B.
+- **Por obra:** Resumen, Gastos (buscador y filtros), Análisis (tabla A + B automática, comparación por rubro, acumulado, mes × rubro) y Ajustes (datos, tipos de costo, rubros).
+- **Pesos o dólares** con la cotización del día de cada gasto; dólar Oficial, Blue o MEP online.
+- **Exportar** Excel (3 hojas) y PDF para reuniones. **Importar** gastos desde Excel.
+- **Copia de seguridad** en `.json` y datos de ejemplo para probar.
+- Si había obras guardadas en el navegador de la versión anterior, la app ofrece subirlas a la cuenta.
 
 ## Estructura
 
 ```
-src/
-  lib/
-    store.jsx       ← estado y guardado (acá se conecta el backend)
-    calc.js         ← todos los cálculos (totales, % por rubro, A/B, evolución)
-    money.js        ← monedas, conversión y formatos
-    graficos.js     ← configuración de los gráficos (pantalla y PDF)
-    exportExcel.js  ← exportar / importar Excel
-    exportPdf.js    ← informe PDF
-    catalogo.js     ← rubros, tipos de costo y sugerencias
-    seed.js         ← obras de ejemplo
-    dolar.js        ← cotización online
-  components/       ← logo, fachada, modales, gráficos
-  pages/            ← panel de obras y pestañas de cada obra
+api/                 ← funciones serverless de Vercel (backend)
+  auth/signup.js     · crear cuenta
+  auth/login.js      · ingresar (usuario o email)
+  auth/logout.js     · cerrar sesión
+  auth/me.js         · usuario actual
+  datos.js           · leer todo / carga masiva
+  obras.js           · crear, editar, borrar obras
+  gastos.js          · crear, editar, borrar gastos
+  ajustes.js         · moneda y cotización
+server/              ← código compartido del backend
+  db.js              · conexión (Neon serverless en producción, pg en local)
+  auth.js            · bcrypt + JWT en cookie
+  datos.js           · validaciones y conversión filas ⇄ objetos
+  local.js           · servidor local para desarrollo
+db/schema.sql        ← tablas: usuarios, ajustes, obras, gastos
+src/                 ← frontend (React + Vite)
+  lib/store.jsx      · estado de la app y guardado en la API
+  lib/sesion.jsx     · login / signup / logout
+  pages/Acceso.jsx   · pantalla de ingreso y registro
 ```
 
-## Datos
-
-Por ahora los datos se guardan en el navegador (localStorage). Para pasar al
-backend del anteproyecto (Node + Express + PostgreSQL) alcanza con reemplazar
-`cargar()` y `guardar()` en `src/lib/store.jsx` por llamadas a la API; las
-pantallas no cambian.
-
-Tecnologías: React 18, Vite, Chart.js, ExcelJS, jsPDF.
+Tecnologías: React 18, Vite, Chart.js, ExcelJS, jsPDF · Node.js (funciones de Vercel) · PostgreSQL (Neon) · bcrypt + JWT.
