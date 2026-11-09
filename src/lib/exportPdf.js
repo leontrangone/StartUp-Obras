@@ -26,10 +26,14 @@ async function imagen(cfg, w, h) {
   document.body.appendChild(cont);
   const c = new Chart(canvas, {
     ...cfg,
-    options: { ...cfg.options, responsive: false, animation: false, devicePixelRatio: 3 },
+    options: { ...cfg.options, responsive: false, animation: false, devicePixelRatio: 2.5 },
+    plugins: [...(cfg.plugins || []), {
+      id: 'fondo',
+      beforeDraw: (ch) => { const x = ch.ctx; x.save(); x.fillStyle = '#FFFFFF'; x.fillRect(0, 0, ch.width, ch.height); x.restore(); },
+    }],
   });
   c.update('none');
-  const url = canvas.toDataURL('image/png');
+  const url = canvas.toDataURL('image/jpeg', 0.9);
   c.destroy();
   cont.remove();
   return url;
@@ -47,7 +51,7 @@ function logo(doc, x, y, s = 1) {
 export async function exportarPdf(obra, gastos, moneda, tcHoy) {
   if (document.fonts?.ready) await document.fonts.ready;
   const res = resumenObra(obra, gastos, moneda, tcHoy);
-  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const doc = new jsPDF({ unit: 'mm', format: 'a4', compress: true });
   const W = 210, M = 14, ancho = W - M * 2;
   const op = { sinAnimacion: true, fondo: '#FFFFFF' };
 
@@ -108,7 +112,7 @@ export async function exportarPdf(obra, gastos, moneda, tcHoy) {
   y += 12;
   titulo('Gasto mes a mes', y, `Separado por tipo de costo · ${res.evolucion.length} meses`);
   const imgMes = await imagen(cfgMensual(res, obra, moneda, op), 620, 230);
-  doc.addImage(imgMes, 'PNG', M, y + 7, ancho, ancho * (230 / 620));
+  doc.addImage(imgMes, 'JPEG', M, y + 7, ancho, ancho * (230 / 620));
   y += 7 + ancho * (230 / 620) + 9;
 
   const mitad = (ancho - 6) / 2;
@@ -117,8 +121,8 @@ export async function exportarPdf(obra, gastos, moneda, tcHoy) {
   doc.text('Costo por rubro', M + mitad + 6, y);
   const imgDona = await imagen(cfgDona(res, obra, moneda, op), 300, 240);
   const imgRub = await imagen(cfgRubros(res, moneda, op), 320, 240);
-  doc.addImage(imgDona, 'PNG', M, y + 4, mitad, mitad * (240 / 300));
-  doc.addImage(imgRub, 'PNG', M + mitad + 6, y + 4, mitad, mitad * (240 / 320));
+  doc.addImage(imgDona, 'JPEG', M, y + 4, mitad, mitad * (240 / 300));
+  doc.addImage(imgRub, 'JPEG', M + mitad + 6, y + 4, mitad, mitad * (240 / 320));
 
   // ── Página 2: tabla A+B y comparación ────────────────────────────────────
   doc.addPage();
@@ -145,12 +149,12 @@ export async function exportarPdf(obra, gastos, moneda, tcHoy) {
   const nR = res.rubros.filter((r) => r.total > 0).length;
   const hAB = Math.max(160, 50 + nR * 28);
   const imgAB = await imagen(cfgRubrosAB(res, obra, moneda, op), 620, hAB);
-  doc.addImage(imgAB, 'PNG', M, y + 4, ancho, ancho * (hAB / 620));
+  doc.addImage(imgAB, 'JPEG', M, y + 4, ancho, ancho * (hAB / 620));
   y += 4 + ancho * (hAB / 620) + 10;
   if (y > 200) { doc.addPage(); y = 18; }
   titulo('Gasto acumulado', y, res.presupuesto ? 'Comparado con el presupuesto total' : 'Suma de todos los gastos mes a mes');
   const imgAc = await imagen(cfgAcumulado(res, moneda, op), 620, 210);
-  doc.addImage(imgAc, 'PNG', M, y + 7, ancho, ancho * (210 / 620));
+  doc.addImage(imgAc, 'JPEG', M, y + 7, ancho, ancho * (210 / 620));
 
   // ── Página 3: detalle mensual y gastos más grandes ───────────────────────
   doc.addPage();

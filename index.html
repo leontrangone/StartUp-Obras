@@ -8,7 +8,20 @@
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231C1E21'/%3E%3Cpath d='M32 10v12' stroke='%23F2B500' stroke-width='4' stroke-linecap='round'/%3E%3Cpath d='M22 24h20l-10 30z' fill='%23F2B500'/%3E%3C/svg%3E" />
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div id="aviso-dev" style="display:none;font-family:system-ui,sans-serif;max-width:520px;margin:12vh auto;padding:28px;background:#fff;border:1px solid #E2DDD1;border-top:5px solid #F2B500;border-radius:12px;color:#1C1E21;line-height:1.5">
+        <h2 style="margin:0 0 8px">Este es el archivo de desarrollo</h2>
+        <p style="margin:0 0 10px">Para usar la app con doble clic, abrí <b>Plomada.html</b> (está en esta misma carpeta).</p>
+        <p style="margin:0;color:#5F646B;font-size:14px">Para programar: abrí una terminal en la carpeta y ejecutá <code>npm install</code> y después <code>npm run dev</code>.</p>
+      </div>
+    </div>
+    <script>
+      // Si este index se abre sin Vite, la app no arranca: mostramos cómo abrirla.
+      setTimeout(function () {
+        var a = document.getElementById('aviso-dev');
+        if (a && document.querySelector('script[src="/src/main.jsx"]')) a.style.display = 'block';
+      }, 1200);
+    </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

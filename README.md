@@ -6,14 +6,16 @@ porcentajes y la tabla **Representación de costos A + B** se arman solos.
 
 ## Cómo abrirla
 
-**Sin instalar nada:** abrí `dist/index.html` con doble clic (Chrome, Edge o Firefox).
+**Sin instalar nada:** abrí **`Plomada.html`** con doble clic (Chrome, Edge o Firefox).
+
+> Ojo: el `index.html` de la raíz es el archivo de desarrollo y solo funciona con `npm run dev`.
 
 **Para desarrollar:**
 
 ```bash
 npm install
 npm run dev      # abre la app en http://localhost:5173
-npm run build    # regenera dist/index.html (un solo archivo)
+npm run build    # regenera Plomada.html (un solo archivo, también en dist/)
 ```
 
 ## Qué tiene
