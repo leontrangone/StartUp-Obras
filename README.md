@@ -4,28 +4,37 @@ App web para registrar y analizar los gastos de una o varias obras de construcci
 Cada usuario tiene su cuenta (usuario o email + contraseña) y sus obras quedan
 guardadas en una base de datos **PostgreSQL en Neon**. Se publica en **Vercel**.
 
-## Cómo publicarla (Vercel + Neon)
+## Dónde está publicada
 
-1. **Subí el código a GitHub**
-   ```bash
-   git add .
-   git commit -m "Plomada con cuentas y base de datos"
-   git push
-   ```
-2. **Creá el proyecto en Vercel:** en [vercel.com](https://vercel.com) elegí *Add New → Project*, importá el repo y dejá todo como viene (Vercel detecta Vite). Todavía no hace falta hacer el deploy.
-3. **Conectá Neon:** en el proyecto de Vercel, andá a *Storage → Create Database → Neon* y conectalo al proyecto. Vercel crea sola la variable `DATABASE_URL`.
-   - Si ya tenés una base en Neon: copiá la *Connection string* desde el panel de Neon y cargala a mano como `DATABASE_URL` en *Settings → Environment Variables*.
-4. **Agregá `JWT_SECRET`:** en *Settings → Environment Variables* creá `JWT_SECRET` con una frase larga y al azar (es la llave que firma las sesiones).
-5. **Deploy:** *Deployments → Redeploy*. Listo: abrí el link, creá tu cuenta y empezá.
+- **App:** proyecto `plomada` en Vercel (equipo ascu-s-projects), conectado a este repo de GitHub: cada `git push` a `main` publica la versión nueva sola.
+- **Base de datos:** proyecto `plomada` en Neon (región São Paulo). Las funciones de Vercel corren en São Paulo (`gru1`) para estar cerca.
+- **Variables en Vercel** (*Settings → Environment Variables*):
+  | Variable | Para qué |
+  |---|---|
+  | `DATABASE_URL` | conexión a Neon (ya cargada) |
+  | `JWT_SECRET` | firma de las sesiones (ya cargada) |
+  | `SMTP_USER` | el Gmail desde el que salen los códigos |
+  | `SMTP_PASS` | la *contraseña de aplicación* de ese Gmail |
 
-Las tablas se crean solas la primera vez que alguien usa la app (el esquema está en `db/schema.sql`).
-De ahí en más, cada `git push` publica la versión nueva automáticamente.
+### Configurar el Gmail para mandar los códigos
+1. En tu cuenta de Google activá la **Verificación en 2 pasos** (myaccount.google.com → Seguridad).
+2. Entrá a **myaccount.google.com/apppasswords**, creá una contraseña de aplicación llamada "Plomada" y copiá las 16 letras.
+3. En Vercel → proyecto `plomada` → *Settings → Environment Variables*, agregá `SMTP_USER` (tu Gmail) y `SMTP_PASS` (las 16 letras) para *Production* y *Preview*.
+4. *Deployments → … → Redeploy* para que tome las variables.
+
+## Seguridad de las cuentas
+
+- **Registro con código:** para crear la cuenta llega un código de 6 números al mail; sin ese código la cuenta no se crea.
+- **Ingreso en 2 pasos:** después de la contraseña se pide un código por mail. Se puede marcar "no pedir el código en esta computadora por 30 días".
+- **Recuperar la cuenta:** "¿Olvidaste tu contraseña?" manda un código para elegir una contraseña nueva. Al cambiarla se cierran todas las sesiones abiertas y llega un aviso por mail. Nunca se revela si un usuario o email existe.
+- **Límites de intentos:** 5 contraseñas incorrectas por cuenta (o 20 por conexión) bloquean el ingreso 15 minutos; cada código admite 5 intentos y vence a los 10 minutos; se puede pedir un código cada 45 segundos y hasta 10 por hora.
+- Contraseñas con bcrypt, códigos guardados como hash (nunca en texto plano), sesión en cookie `httpOnly` + `Secure`.
 
 ## Cómo correrla en tu compu
 
 ```bash
 npm install
-cp .env.example .env.local     # y completá DATABASE_URL y JWT_SECRET
+cp .env.example .env.local     # y completá DATABASE_URL, JWT_SECRET y el Gmail
 npm run dev                    # app en http://localhost:5173 (API en :3001)
 ```
 
@@ -45,20 +54,21 @@ Para desarrollo podés usar la misma base de Neon, o mejor una *branch* de Neon 
 
 ```
 api/                 ← funciones serverless de Vercel (backend)
-  auth/signup.js     · crear cuenta
-  auth/login.js      · ingresar (usuario o email)
-  auth/logout.js     · cerrar sesión
-  auth/me.js         · usuario actual
+  auth/[accion].js   · registro, login, verificar código, reenviar,
+                       recuperar, restablecer, logout y usuario actual
   datos.js           · leer todo / carga masiva
   obras.js           · crear, editar, borrar obras
   gastos.js          · crear, editar, borrar gastos
   ajustes.js         · moneda y cotización
 server/              ← código compartido del backend
   db.js              · conexión (Neon serverless en producción, pg en local)
-  auth.js            · bcrypt + JWT en cookie
+  auth.js            · bcrypt + JWT en cookie, dispositivo de confianza
+  codigos.js         · códigos de 6 números por mail
+  correo.js          · envío de mails (Gmail/SMTP) y plantillas
+  limites.js         · límites de intentos
   datos.js           · validaciones y conversión filas ⇄ objetos
   local.js           · servidor local para desarrollo
-db/schema.sql        ← tablas: usuarios, ajustes, obras, gastos
+db/schema.sql        ← tablas: usuarios, ajustes, obras, gastos, codigos, limites
 src/                 ← frontend (React + Vite)
   lib/store.jsx      · estado de la app y guardado en la API
   lib/sesion.jsx     · login / signup / logout

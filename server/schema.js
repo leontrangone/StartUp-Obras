@@ -62,4 +62,30 @@ create table if not exists gastos (
 );
 create index if not exists gastos_obra on gastos (obra_id);
 create index if not exists gastos_usuario_fecha on gastos (usuario_id, fecha);
+
+-- ── Seguridad de cuentas ───────────────────────────────────────────────────
+-- Al cambiar la contraseña se incrementa y se cierran todas las sesiones abiertas
+alter table usuarios add column if not exists sesion_version integer not null default 0;
+
+-- Códigos de 6 dígitos que llegan por mail (registro, ingreso y recuperación)
+create table if not exists codigos (
+  id         text primary key,
+  proposito  text not null check (proposito in ('registro','login','recuperar')),
+  email      text not null,
+  usuario_id text references usuarios(id) on delete cascade,
+  hash       text not null,                  -- el código nunca se guarda en texto plano
+  datos      jsonb,                          -- en el registro: usuario y contraseña encriptada
+  intentos   integer not null default 0,
+  usado      boolean not null default false,
+  expira     timestamptz not null,
+  creado     timestamptz not null default now()
+);
+create index if not exists codigos_email on codigos (lower(email), creado);
+
+-- Registro de intentos para limitar ataques (login fallido, envío de mails, etc.)
+create table if not exists limites (
+  clave  text not null,
+  creado timestamptz not null default now()
+);
+create index if not exists limites_clave on limites (clave, creado);
 `;

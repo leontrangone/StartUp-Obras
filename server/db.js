@@ -26,8 +26,8 @@ async function conectar() {
 async function asegurarEsquema(run) {
   if (!esquemaListo) {
     esquemaListo = (async () => {
-      // Si las tablas ya existen, no hace falta nada
-      const [fila] = await run("select to_regclass('public.gastos') as t");
+      // Si la última tabla agregada ya existe, el esquema está al día
+      const [fila] = await run("select to_regclass('public.limites') as t");
       if (fila?.t) return;
       const sentencias = ESQUEMA
         .replace(/--.*$/gm, '')

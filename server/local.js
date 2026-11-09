@@ -2,7 +2,7 @@
 // Corre las mismas funciones de /api que usa Vercel, en http://localhost:3001.
 // `npm run dev` lo levanta junto con Vite (que le pasa las llamadas a /api).
 import http from 'node:http';
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
 
@@ -26,9 +26,18 @@ http.createServer(async (req, res) => {
   if (!url.pathname.startsWith('/api/') || !/^[a-z/]+$/.test(nombre)) {
     res.statusCode = 404; return res.end('No encontrado');
   }
-  const archivo = join(raiz, 'api', `${nombre}.js`);
-  if (!existsSync(archivo)) { res.statusCode = 404; return res.end('No encontrado'); }
   req.query = Object.fromEntries(url.searchParams);
+  let archivo = join(raiz, 'api', `${nombre}.js`);
+  if (!existsSync(archivo)) {
+    // Rutas dinámicas al estilo Vercel: api/auth/[accion].js
+    const partes = nombre.split('/');
+    const ultimo = partes.pop();
+    const dir = join(raiz, 'api', ...partes);
+    const dinamico = existsSync(dir) && readdirSync(dir).find((f) => /^\[\w+\]\.js$/.test(f));
+    if (!dinamico) { res.statusCode = 404; return res.end('No encontrado'); }
+    req.query[dinamico.slice(1, -4)] = ultimo;
+    archivo = join(dir, dinamico);
+  }
   try {
     const mod = await import(pathToFileURL(archivo).href);
     await mod.default(req, res);

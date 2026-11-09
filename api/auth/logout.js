@@ -1,10 +1,2 @@
-// POST /api/auth/logout
-import { ruta } from '../../server/http.js';
-import { cerrarSesion } from '../../server/auth.js';
-
-export default ruta({
-  async POST(req, res) {
-    cerrarSesion(res);
-    return { ok: true };
-  },
-});
+// Archivo viejo: ahora todo vive en [accion].js. Se puede borrar con: git rm api/auth/logout.js
+export { default } from './[accion].js';
